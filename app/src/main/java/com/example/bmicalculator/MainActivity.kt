@@ -10,28 +10,25 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.*
+import androidx.compose.material.Text
+import androidx.compose.material.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.bmicalculator.ui.theme.BMICalculatorTheme
 
 class MainActivity : ComponentActivity() {
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-
+        var listOfBmiStatus = BmiStatusModel()
 
         setContent {
             BMICalculatorTheme {
@@ -48,10 +45,6 @@ class MainActivity : ComponentActivity() {
                     mutableStateOf("0.0")
                 }
 
-                var bmiStatus by remember {
-                    mutableStateOf("")
-                }
-
                 var gender by remember {
                     mutableStateOf("")
                 }
@@ -61,27 +54,24 @@ class MainActivity : ComponentActivity() {
 
                 fun updateBmi() {
                     if (height.isNotEmpty() && weight.isNotEmpty() && height.toInt() > 30) {
-                        var heightToMeter = (height.toDouble() * 0.01)
-                        var result =
+                        val heightToMeter = (height.toDouble() * 0.01)
+                        val result =
                             weight.toDouble() / (heightToMeter * heightToMeter)
 
                         bmi = (Math.round(result * 100.0) / 100.0).toString()
 
 
-                        var intBmi = bmi.toDouble()
+                        val intBmi = bmi.toDouble()
 
-                        if (intBmi < 18.5) {
-                            bmiStatus = "Underweight"
-                        } else if (intBmi >= 18.5 && intBmi < 25) {
-                            bmiStatus = "Healthy"
-                        } else if (intBmi >= 25 && intBmi < 30) {
-                            bmiStatus = "Overweight"
-                        } else if (intBmi >= 30) {
-                            bmiStatus = "Obese"
+                        listOfBmiStatus = when (intBmi) {
+                            in 0.0..18.49 -> BmiStatusModel("Underweight", Color.Blue)
+                            in 18.5..24.99 -> BmiStatusModel("Healthy", Color.Green)
+                            in 25.00..29.99 -> BmiStatusModel("Overweight", Color.Blue)
+                            in 30.00..200.00 -> BmiStatusModel("Obese", Color.Red)
+                            else -> BmiStatusModel("Invalid", Color.Red)
                         }
                     }
                 }
-
 
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text("WebDev BMI Calculator", fontSize = 25.sp)
@@ -133,12 +123,14 @@ class MainActivity : ComponentActivity() {
                                 .fillMaxWidth()
                                 .padding(0.dp, 50.dp, 0.dp, 0.dp)
                         ) {
-                            BmiResult(bmi = bmi, bmiStatus = bmiStatus)
+                            BmiResult(bmi = bmi, bmiStatusModel = listOfBmiStatus)
+
                             TextButton(onClick = {
                                 bmi = "0.0"
                                 weight = "00"
                                 height = "00"
                                 gender = ""
+                                listOfBmiStatus = BmiStatusModel()
                             }) {
                                 Text(text = "Re-calculate BMI", fontSize = 18.sp)
                             }
@@ -209,15 +201,19 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun BmiResult(bmi: String, bmiStatus: String) {
+    fun BmiResult(bmi: String, bmiStatusModel: BmiStatusModel) {
         Text(text = "Your BMI")
         Text(text = bmi, fontSize = 60.sp, fontWeight = FontWeight.Bold)
         Text(
-            text = bmiStatus,
+            text = bmiStatusModel.status,
+            color = bmiStatusModel.color,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(0.dp, 0.dp, 0.dp, 20.dp)
         )
     }
-
-
 }
+
+data class BmiStatusModel(
+    val status: String = "",
+    val color: Color = Color.Black
+)
