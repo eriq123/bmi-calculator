@@ -1,5 +1,6 @@
 package com.example.bmicalculator
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -10,12 +11,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.Button
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -23,14 +26,23 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.bmicalculator.model.BmiHistoryModel
+import com.example.bmicalculator.model.BmiStatusModel
 import com.example.bmicalculator.ui.theme.BMICalculatorTheme
+import java.util.*
 
 class MainActivity : ComponentActivity() {
+
+    companion object {
+        var listOfBmiHistory: MutableList<BmiHistoryModel> = mutableListOf()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         var listOfBmiStatus = BmiStatusModel()
 
         setContent {
+            val context = LocalContext.current
             BMICalculatorTheme {
 
                 var weight by remember {
@@ -48,18 +60,14 @@ class MainActivity : ComponentActivity() {
                 var gender by remember {
                     mutableStateOf("")
                 }
-//                var bmiHistory by remember {
-//                    mutableListOf([])
-//                }
+
 
                 fun updateBmi() {
                     if (height.isNotEmpty() && weight.isNotEmpty() && height.toInt() > 30) {
                         val heightToMeter = (height.toDouble() * 0.01)
-                        val result =
-                            weight.toDouble() / (heightToMeter * heightToMeter)
+                        val result = weight.toDouble() / (heightToMeter * heightToMeter)
 
                         bmi = (Math.round(result * 100.0) / 100.0).toString()
-
 
                         val intBmi = bmi.toDouble()
 
@@ -70,11 +78,22 @@ class MainActivity : ComponentActivity() {
                             in 30.00..200.00 -> BmiStatusModel("Obese", Color.Red)
                             else -> BmiStatusModel("Invalid", Color.Red)
                         }
+
+                        val temp = BmiHistoryModel(
+                            weight,
+                            height,
+                            bmi,
+                            listOfBmiStatus.status,
+                            listOfBmiStatus.color,
+                            Date()
+                        )
+                        listOfBmiHistory.add(temp)
                     }
                 }
 
                 Column(modifier = Modifier.padding(20.dp)) {
-                    Text("WebDev BMI Calculator", fontSize = 25.sp)
+                    Header(text = "WebDev BMI Calculator")
+
 
                     Column(
                         verticalArrangement = Arrangement.Center,
@@ -89,30 +108,26 @@ class MainActivity : ComponentActivity() {
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 modifier = Modifier.weight(1F)
                             ) {
-                                Card(
-                                    cardImage = R.drawable.ic_boy,
+                                Card(cardImage = R.drawable.ic_boy,
                                     textTitle = "Weight (kg)",
                                     value = weight,
                                     handleValueChange = { weight = it; updateBmi() },
                                     cardGender = "Male",
                                     gender = gender,
-                                    handleGenderChange = { gender = it }
-                                )
+                                    handleGenderChange = { gender = it })
                             }
 
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 modifier = Modifier.weight(1F)
                             ) {
-                                Card(
-                                    cardImage = R.drawable.ic_girl,
+                                Card(cardImage = R.drawable.ic_girl,
                                     textTitle = "Height (cm)",
                                     value = height,
                                     handleValueChange = { height = it; updateBmi() },
                                     cardGender = "Female",
                                     gender = gender,
-                                    handleGenderChange = { gender = it }
-                                )
+                                    handleGenderChange = { gender = it })
                             }
                         }
 
@@ -125,23 +140,34 @@ class MainActivity : ComponentActivity() {
                         ) {
                             BmiResult(bmi = bmi, bmiStatusModel = listOfBmiStatus)
 
-                            TextButton(onClick = {
+                            Button(onClick = {
                                 bmi = "0.0"
                                 weight = "00"
                                 height = "00"
                                 gender = ""
                                 listOfBmiStatus = BmiStatusModel()
                             }) {
-                                Text(text = "Re-calculate BMI", fontSize = 18.sp)
+                                Text(text = "Reset Form", fontSize = 18.sp)
+                            }
+
+                            TextButton(onClick = {
+                                context.startActivity(
+                                    Intent(
+                                        context, HistoryActivity::class.java
+                                    )
+                                )
+                            }) {
+                                Text(text = "BMI History",
+                                    color = Color.Blue,
+                                    fontSize = 16.sp,
+                                    modifier = Modifier
+                                        .padding(0.dp, 10.dp, 0.dp, 0.dp)
+                                )
                             }
                         }
-
                     }
-
                 }
-
             }
-
         }
     }
 
@@ -155,8 +181,8 @@ class MainActivity : ComponentActivity() {
         gender: String,
         handleGenderChange: (String) -> Unit,
     ) {
-        Image(
-            painter = painterResource(id = cardImage), contentDescription = "",
+        Image(painter = painterResource(id = cardImage),
+            contentDescription = "",
             modifier = Modifier
                 .padding(0.dp, 0.dp, 0.dp, 30.dp)
                 .clickable {
@@ -166,15 +192,13 @@ class MainActivity : ComponentActivity() {
                     if (cardGender === gender) {
                         Modifier.border(
                             BorderStroke(
-                                1.dp,
-                                Color.Green
+                                1.dp, Color.Green
                             )
                         )
                     } else {
                         Modifier.border(BorderStroke(0.dp, Color.Transparent))
                     }
-                )
-        )
+                ))
 
         Text(
             text = textTitle,
@@ -182,8 +206,7 @@ class MainActivity : ComponentActivity() {
             modifier = Modifier.padding(0.dp, 0.dp, 0.dp, 0.dp)
         )
 
-        BasicTextField(
-            value = value,
+        BasicTextField(value = value,
             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
             onValueChange = {
                 handleValueChange(it.filter { symbol ->
@@ -191,13 +214,11 @@ class MainActivity : ComponentActivity() {
                 })
             },
             textStyle = TextStyle.Default.copy(
-                fontSize = 75.sp,
-                textAlign = TextAlign.Center
+                fontSize = 75.sp, textAlign = TextAlign.Center
             ),
             modifier = Modifier.clickable {
                 if (value.toInt() == 0) handleValueChange("")
-            }
-        )
+            })
     }
 
     @Composable
@@ -211,9 +232,10 @@ class MainActivity : ComponentActivity() {
             modifier = Modifier.padding(0.dp, 0.dp, 0.dp, 20.dp)
         )
     }
+
 }
 
-data class BmiStatusModel(
-    val status: String = "",
-    val color: Color = Color.Black
-)
+@Composable
+fun Header(text: String) {
+    Text(text = text, fontSize = 25.sp)
+}
